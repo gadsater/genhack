@@ -1,0 +1,10 @@
+
+* Blockchain File
+  A file which holds the protocol for the functioning for bot and details about blockchain and users in the network.
+** Bot protocol
+*** User sends data
+*** User can request data
+*** Bot can create blocks
+*** Can create blockchain
+*** 
+* 
