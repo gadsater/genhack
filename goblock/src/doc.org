@@ -1,0 +1,8 @@
+
+* Phase 1 Implementation:
+** We create a file which contains the details of a bot(similar to a virtual machine that executes a set of instructions), a blockchain (changes recorded in the execution of instructions on a data is made permanent) and information about user nodes(users are the people who communicate with the blockchain).
+** Required functions:
+*** createGenesisFile
+*** createBlockChain
+*** createBot
+*** addUser

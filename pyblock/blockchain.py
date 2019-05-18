@@ -4,16 +4,20 @@ from time import time
 from urllib.parse import urlparse
 from uuid import uuid4
 
+from block import *
+
 blockchain_file = "./.blockchain"
 
-def create_block(data):
+def create_block(data, sender, receiver, validator):
     last_block = get_prev_block()
-    block = {
-        'index': last_block['index']+1,
-        'timestamp': time(),
-        'data': data,
-        'previous_hash': hash_block(last_block),
-    }
+    block = new_block(
+        last_block['index']+1,
+        sender,
+        receiver,
+        validator,
+        data,
+        hash_block(last_block),
+    )
     return block
 
 def add_block(block):
