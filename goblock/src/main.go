@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -10,29 +10,32 @@ import (
 )
 
 type Block struct {
-	Index     int
-	Timestamp int64
-	Sender    []byte
-	Receiver  []byte
-	Validator []byte
-	Data      string
-	Prev_hash []byte
+	BlockchainId string
+	Index        int
+	Timestamp    int64
+	Sender       string
+	Receiver     string
+	Validator    string
+	Data         string
+	PrevHash     string
 }
 
 type BlockchainInfo struct {
-	Index     int
-	Prev_hash []byte
+	BlockchainId string
+	Index        int
+	PrevHash     string
 }
 
-func InitBlock(_index int, _data string, _prev_hash []byte) Block {
+func InitBlock(_bcid string, _index int, _data string, _prev_hash string) Block {
 	return Block{
-		Index:     _index,
-		Timestamp: time.Now().Unix(),
-		Sender:    nil,
-		Receiver:  nil,
-		Validator: nil,
-		Data:      _data,
-		Prev_hash: _prev_hash,
+		BlockchainId: _bcid,
+		Index:        _index,
+		Timestamp:    time.Now().Unix(),
+		Sender:       "",
+		Receiver:     "",
+		Validator:    "",
+		Data:         _data,
+		PrevHash:     _prev_hash,
 	}
 }
 
@@ -40,10 +43,9 @@ func WriteBlock(BlockchainDir string, _block Block) BlockchainInfo {
 	json_block, err := json.MarshalIndent(_block, "", " ")
 	check(err)
 
-	shaFile := sha1.New()
-	shaFile.Write(json_block)
+	sha_file := sha256.Sum256(json_block)
 
-	FileName := hex.EncodeToString(shaFile.Sum(nil))
+	FileName := hex.EncodeToString(sha_file[:])
 	err = ioutil.WriteFile(
 		BlockchainDir+FileName,
 		json_block,
@@ -51,33 +53,34 @@ func WriteBlock(BlockchainDir string, _block Block) BlockchainInfo {
 	check(err)
 
 	return BlockchainInfo{
-		Index:     _block.Index + 1,
-		Prev_hash: []byte(FileName),
+		BlockchainId: _block.BlockchainId,
+		Index:        _block.Index + 1,
+		PrevHash:     FileName,
 	}
 }
 
-func readPrevDetail(file_loc string) BlockchainInfo {
-
-	data, err := ioutil.ReadFile(file_loc)
+func readBlockchain(file_loc string, blockchain_id string) BlockchainInfo {
+	data, err := ioutil.ReadFile(file_loc + "/" + blockchain_id)
 
 	block_info := BlockchainInfo{}
 	err = json.Unmarshal(data, &block_info)
 
 	if err != nil {
 		block_info = BlockchainInfo{
-			Index:     0,
-			Prev_hash: nil,
+			BlockchainId: "",
+			Index:        0,
+			PrevHash:     "",
 		}
 	}
 	return block_info
 }
 
-func writePrevDetail(file_loc string, data BlockchainInfo) {
-	err := os.Remove(file_loc)
+func writeBlockchain(file_loc string, blockchain_id string, data BlockchainInfo) {
+	err := os.Remove(file_loc + "/" + blockchain_id)
 
 	block_info, err := json.MarshalIndent(data, "", " ")
 
-	err = ioutil.WriteFile(file_loc, block_info, 0444)
+	err = ioutil.WriteFile(file_loc+"/"+blockchain_id, block_info, 0444)
 	check(err)
 }
 
@@ -88,10 +91,13 @@ func check(e error) {
 }
 
 func main() {
-	prev_block := readPrevDetail("./BlockDir/prev_block")
+	blockchain_id := "d439c8e6552b43c2bd3ccc759db542ac5778378e662a5bcdd84e7cb222ef51c7"
+
+	prev_block := readBlockchain("./BlockDir", blockchain_id)
 
 	prev_block = WriteBlock("./BlockDir/",
-		InitBlock(prev_block.Index, "Hello", prev_block.Prev_hash))
+		InitBlock(blockchain_id, prev_block.Index,
+			"Hello", prev_block.PrevHash))
 
-	writePrevDetail("./BlockDir/prev_block", prev_block)
+	writeBlockchain("./BlockDir", blockchain_id, prev_block)
 }

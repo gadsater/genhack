@@ -1,0 +1,10 @@
+{
+ "BlockchainId": "d439c8e6552b43c2bd3ccc759db542ac5778378e662a5bcdd84e7cb222ef51c7",
+ "Index": 0,
+ "Timestamp": 1558248959,
+ "Sender": "",
+ "Receiver": "",
+ "Validator": "",
+ "Data": "Hello",
+ "PrevHash": ""
+}
