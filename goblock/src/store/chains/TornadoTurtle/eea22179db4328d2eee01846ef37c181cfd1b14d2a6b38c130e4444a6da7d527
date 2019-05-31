@@ -1,6 +1,7 @@
 {
+ "ChainLoc": "../store/chains",
  "ChainName": "TornadoTurtle",
  "ChainId": "eea22179db4328d2eee01846ef37c181cfd1b14d2a6b38c130e4444a6da7d527",
- "Index": 1,
- "PrevHash": "e8951256aae120f72d377304362f7dd2dece791cb63331e7e798821389c9b2cd"
+ "Index": "4",
+ "PrevHash": "d601f63de0c33fcfaea75a3d601047bdf8e99c2ce90ae8b9c0c4b078192e131e"
 }

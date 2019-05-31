@@ -1,183 +1,88 @@
-package main
+package chain
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"main/lib"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"time"
+	"errors"
+	"strconv"
 )
 
-type Block struct {
-	ChainName string
-	Index     int
-	Timestamp int64
-	Sender    string
-	Receiver  string
-	Validator string
-	Data      string
-	PrevHash  string
-}
-
-type ChainInfo struct {
+type Chain struct {
+	ChainLoc string
 	ChainName string
 	ChainId   string
-	Index     int
+	Index     string
 	PrevHash  string
 }
 
-func initBlock(fileLoc string, chainName string) (Block, error) {
-	if _, err := os.Stat(fileLoc + "/" + chainName); os.IsNotExist(err) {
-		fmt.Println("Chain doesn't exist, please init chain first. Hint: Refer Initchain function")
-		return Block{}, err
+type ChainFunc interface {
+	InitChain(string) (Chain, error)
+	ReadChain(string) (Chain, error)
+	IsChainExist(string) error
+	JsonToChain([]byte) Chain
+	ChainToJson(Chain) []byte
+}
+func (chain Chain) InitBlock() (Block, error) {
+	if !lib.IsFileExist(chain.ChainLoc, chain.ChainName) {
+		return Block{}, errors.New("Chain does not exist")
 	}
 
-	chainInfo, _ := ReadChain(fileLoc, chainName)
-
 	return Block{
-		ChainName: chainName,
-		Index:     chainInfo.Index,
-		Timestamp: time.Now().Unix(),
+		ChainName: chain.ChainName,
+		Index:     chain.Index,
+		Timestamp: lib.GetTime(),
 		Sender:    "",
 		Receiver:  "",
 		Validator: "",
 		Data:      "",
-		PrevHash:  chainInfo.PrevHash,
+		PrevHash:  chain.PrevHash,
 	}, nil
 }
 
-func ReadBlock(fileLoc string, chainId string, blockHash string) (Block, error) {
-	jsonBlock, err := ioutil.ReadFile(fileLoc + "/" + chainId + "/" + blockHash)
+func (chain Chain) ReadBlock(blockHash string) (Block, error) {
+	jsonBlock, err := lib.ReadFile(chain.ChainLoc, chain.ChainName, blockHash) 
 	if err != nil {
-		fmt.Println("Requested block doesn't exist")
 		return Block{}, err
 	}
 
-	block := Block{}
-	err = json.Unmarshal(jsonBlock, &block)
-
-	return block, nil
+	return JsonToBlock(jsonBlock), err
 }
 
-func WriteBlock(fileLoc string, chainName string, data string) error {
-	block, err := initBlock(fileLoc, chainName)
-	block.Data = data
+func (chain Chain) WriteBlock(block Block) error {
+	jsonBlock := BlockToJson(block)
 
-	jsonBlock, err := json.MarshalIndent(block, "", " ")
-	check(err)
+	blockHash := lib.GetShaString(string(jsonBlock))
 
-	blockHash := getShaString(string(jsonBlock))
-
-	err = ioutil.WriteFile(
-		fileLoc+"/"+block.ChainName+"/"+blockHash,
-		jsonBlock,
-		0444)
-
+	err := lib.WriteFile(chain.ChainLoc, chain.ChainName, blockHash, jsonBlock)
 	if err != nil {
-		fmt.Println("Blockchain is unintialized")
 		return err
 	}
 
-	err = updateChain(fileLoc, block.ChainName, blockHash)
+	chain.PrevHash = blockHash
+	chainInd, _ := strconv.Atoi(chain.Index)
+	chain.Index = strconv.Itoa(chainInd + 1)
 
-	return nil
-}
-
-func getShaString(chainName string) string {
-	chainHash := sha256.Sum256([]byte(chainName))
-	return hex.EncodeToString(chainHash[:])
-}
-
-func InitChain(fileLoc string, chainName string) (ChainInfo, error) {
-
-	if _, err := os.Stat(fileLoc + "/" + chainName); os.IsNotExist(err) {
-
-		err = os.Mkdir(fileLoc+"/"+chainName, 0777)
-
-		if err != nil {
-			fmt.Println("Problem initializing the chain.")
-			return ChainInfo{}, err
-		}
-
-		chainHash := sha256.Sum256([]byte(chainName))
-		chainId := hex.EncodeToString(chainHash[:])
-
-		chainInfo := ChainInfo{
-			ChainName: chainName,
-			ChainId:   chainId,
-			Index:     0,
-			PrevHash:  "",
-		}
-
-		jsonChain, _ := json.MarshalIndent(chainInfo, "", " ")
-
-		err = ioutil.WriteFile(fileLoc+"/"+chainName+"/"+chainId, jsonChain, 0444)
-
-		return chainInfo, nil
-
-	} else {
-
-		chainInfo, _ := ReadChain(fileLoc, chainName)
-		return chainInfo, nil
-
-	}
-
-}
-
-func ReadChain(fileLoc string, chainName string) (ChainInfo, error) {
-	chainId := getShaString(chainName)
-
-	jsonChain, err := ioutil.ReadFile(fileLoc + "/" + chainName + "/" + chainId)
-
+	err = lib.RmFile(chain.ChainLoc, chain.ChainName, chain.ChainId)
 	if err != nil {
-		fmt.Println("Chain doesn't exist")
-		return ChainInfo{}, err
-	}
-
-	chainInfo := ChainInfo{}
-	json.Unmarshal(jsonChain, &chainInfo)
-
-	return chainInfo, nil
-}
-
-func updateChain(fileLoc string, chainName string, prevHash string) error {
-	chainId := getShaString(chainName)
-
-	chainInfo, err := ReadChain(fileLoc, chainName)
-
-	if err != nil {
-		fmt.Println("Error updating chain; chain may not exist")
 		return err
 	}
 
-	chainInfo.Index = chainInfo.Index + 1
-	chainInfo.PrevHash = prevHash
+	jsonChain := ChainToJson(chain)
 
-	err = os.Remove(fileLoc + "/" + chainName + "/" + chainId)
-
-	jsonChain, err := json.MarshalIndent(chainInfo, "", " ")
-
-	err = ioutil.WriteFile(fileLoc+"/"+chainName+"/"+chainId, jsonChain, 0444)
-	check(err)
-
-	return nil
+	err = lib.WriteFile(chain.ChainLoc, chain.ChainName, chain.ChainId, jsonChain)
+	
+	return err
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
+
+func ChainToJson(chain Chain) []byte {
+	jsonChain, _ := json.MarshalIndent(chain, "", " ")
+	return jsonChain
 }
 
-func main() {
-	chainName := "TornadoTurtle"
-	chainLoc := "../store/chains"
+func JsonToChain(jsonData []byte) Chain {
+	chain := Chain{}
+	json.Unmarshal(jsonData, &chain)
 
-	_, err := InitChain(chainLoc, chainName)
-	check(err)
-
-	_ = WriteBlock(chainLoc, chainName, "Hello World")
-
+	return chain
 }
