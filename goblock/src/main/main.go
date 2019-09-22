@@ -11,7 +11,7 @@ func check(e error) {
 }
 
 func main() {
-	chainName := "TornadoTurtle"
+	chainName := "Sid"
 	chainLoc := "../store/chains"
 
 	druid := bot.InitBot("Druid", chainLoc)
